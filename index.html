@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Networth">
+<meta name="theme-color" content="#1a1a1a">
+<title>Networth Tracker</title>
+<!-- iOS PWA icons (Light / Dark / Tinted) — iOS 18+ uses media queries to pick -->
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-light-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-dark-180.png"   media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-tinted-180.png" media="(prefers-color-scheme: dark) and (dynamic-range: high)">
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<!-- Web App Manifest (Android / desktop installable) -->
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root {
+  --bg: #1a1a1a;
+  --bg-elev: #232323;
+  --surface: #262626;
+  --surface-2: #303030;
+  --surface-3: #3a3a3a;
+  --accent: #D97757;
+  --accent-dim: #B85A3E;
+  --accent-soft: rgba(217, 119, 87, 0.12);
+  --success: #7FB069;
+  --success-soft: rgba(127, 176, 105, 0.15);
+  --danger: #E07856;
+  --text: #F5F4EE;
+  --text-dim: #A09E9C;
+  --text-muted: #6B6967;
+  --border: #333333;
+  --border-soft: #2a2a2a;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+
+input[type="number"],
+input[type="text"],
+input[type="date"] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  width: 100%;
+  min-height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
+  font-variant-numeric: tabular-nums;
+}
+input[type="date"] { font-family: inherit; }
+input::placeholder { color: var(--text-muted); }
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+/* Hide spin buttons */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+/* App layout */
+.app {
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* === HOME === */
+.home {
+  padding-bottom: calc(120px + var(--safe-bottom));
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 4px;
+}
+.app-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin: 0;
+}
+.app-title .dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.hero {
+  padding: 8px 20px 16px;
+}
+.hero-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+.hero-value {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -1.2px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.hero-delta {
+  margin-top: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.delta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.delta-pos { background: var(--success-soft); color: var(--success); }
+.delta-neg { background: rgba(224, 120, 86, 0.14); color: var(--danger); }
+.delta-neutral { background: var(--surface-2); color: var(--text-dim); }
+.hero-delta-meta {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Chart */
+.chart-wrap {
+  margin: 4px 0 20px;
+  padding: 0 12px;
+  height: 180px;
+}
+.chart-wrap svg { display: block; width: 100%; height: 100%; }
+.chart-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+/* Sections */
+.section {
+  padding: 0 16px;
+  margin-bottom: 18px;
+}
+.section-title {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 4px 10px;
+  font-weight: 600;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+}
+.breakdown-row + .breakdown-row {
+  border-top: 1px solid var(--border-soft);
+}
+.breakdown-label {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.breakdown-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+.breakdown-row.total .breakdown-label {
+  color: var(--text);
+  font-weight: 600;
+}
+.breakdown-row.total .breakdown-value {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Entries list */
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.entry-item {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 10px 8px 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.entry-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.entry-date {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.entry-value {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.entry-delta {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.entry-actions {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+.icon-btn {
+  width: 44px; height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 16px;
+  transition: background .15s, color .15s;
+}
+.icon-btn:active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.icon-btn.danger:active { color: var(--danger); }
+
+/* Default SVG sizing — prevents viewBox-only icons from blowing up */
+button svg { width: 18px; height: 18px; flex-shrink: 0; display: block; }
+.btn svg { width: 16px; height: 16px; }
+.back-btn svg { width: 22px; height: 22px; }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  right: calc(20px + var(--safe-right));
+  bottom: calc(20px + var(--safe-bottom));
+  background: var(--accent);
+  color: white;
+  border-radius: 28px;
+  height: 56px;
+  padding: 0 22px 0 18px;
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.45), 0 4px 10px rgba(217, 119, 87, 0.3);
+  z-index: 50;
+  transition: transform .12s, background .15s;
+  min-height: 44px;
+}
+.fab:active {
+  background: var(--accent-dim);
+  transform: translateY(1px) scale(0.98);
+}
+.fab .plus {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+/* Backup */
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  flex: 1;
+  height: 46px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+}
+.btn:active { background: var(--surface-2); }
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.btn.primary:active { background: var(--accent-dim); }
+.btn.ghost { background: transparent; }
+
+.hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* === ENTRY VIEW === */
+.entry-view {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+.entry-view.active { display: flex; }
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px 6px 6px;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 2;
+  border-bottom: 1px solid transparent;
+  transition: border-color .2s, background .2s;
+}
+.entry-header.scrolled {
+  background: rgba(26,26,26,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: var(--border-soft);
+}
+.back-btn {
+  width: 44px; height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--text);
+}
+.back-btn:active { background: var(--surface); }
+.entry-title {
+  font-size: 17px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.entry-form {
+  padding: 4px 16px 24px;
+  flex: 1;
+}
+
+.form-section {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.form-section h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-section h3 .badge {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.field .help {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.row .field { flex: 1; margin-bottom: 0; }
+
+.other-item {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.other-item .name { flex: 1.4; }
+.other-item .amount { flex: 1; min-width: 0; }
+.other-item .icon-btn { flex-shrink: 0; }
+
+.add-row-btn {
+  width: 100%;
+  height: 44px;
+  border: 1px dashed var(--border);
+  border-radius: 11px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.add-row-btn:active { background: var(--surface-2); color: var(--text); }
+
+/* Live preview */
+.preview {
+  background: linear-gradient(135deg, rgba(217,119,87,0.08), rgba(217,119,87,0.02));
+  border: 1px solid rgba(217,119,87,0.25);
+}
+.preview h3 { color: var(--accent); }
+.preview .breakdown-row + .breakdown-row {
+  border-top: 1px solid rgba(217,119,87,0.15);
+}
+
+.entry-actions-bar {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg) 70%, rgba(26,26,26,0));
+  padding: 12px 16px calc(16px + var(--safe-bottom));
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(100px + var(--safe-bottom));
+  transform: translateX(-50%) translateY(8px);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.modal-backdrop.active { display: flex; }
+.modal {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 340px;
+  width: 100%;
+}
+.modal h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.modal p { margin: 0 0 18px; color: var(--text-dim); font-size: 14px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions .btn { flex: 1; }
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+.btn.danger:active { background: #C66345; }
+
+/* Error screen */
+.error-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  text-align: center;
+  gap: 12px;
+}
+.error-icon {
+  width: 56px; height: 56px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.error-screen h1 { color: var(--text); margin: 0; font-size: 20px; }
+.error-screen p { color: var(--text-dim); margin: 0; max-width: 320px; }
+
+/* Hidden file input */
+.file-input { display: none; }
+
+/* Slide-up animation for entry view */
+.entry-view.active {
+  animation: slideUp .25s cubic-bezier(0.32, 0.72, 0.4, 1);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 360px) {
+  .hero-value { font-size: 36px; }
+  .hero { padding: 8px 16px 12px; }
+  .section { padding: 0 12px; }
+  .entry-form { padding: 4px 12px 24px; }
+}
+
+@media (hover: hover) {
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary:hover { background: var(--accent-dim); }
+  .fab:hover { background: var(--accent-dim); }
+}
+</style>
+</head>
+<body>
+
+<div id="app" class="app"></div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Confirm modal -->
+<div id="modal" class="modal-backdrop">
+  <div class="modal">
+    <h3 id="modalTitle">Eintrag löschen?</h3>
+    <p id="modalText">Dieser Eintrag wird dauerhaft entfernt.</p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modalCancel">Abbrechen</button>
+      <button class="btn danger" id="modalConfirm">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" class="file-input" accept="application/json,.json">
+
+<script>
+/* ============================================================
+   NETWORTH TRACKER — single-file PWA
+   ============================================================ */
+
+const MY_INVEST = 7000;
+const STORAGE_PREFIX = 'nw:';
+
+/* ---------- Storage health check ---------- */
+function storageAvailable() {
+  try {
+    const x = '__nw_test__';
+    window.localStorage.setItem(x, x);
+    window.localStorage.removeItem(x);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+if (!storageAvailable()) {
+  document.getElementById('app').innerHTML = `
+    <div class="error-screen">
+      <div class="error-icon">!</div>
+      <h1>Speicher nicht verfügbar</h1>
+      <p>Diese App benötigt <strong>localStorage</strong>. Bitte deaktiviere den privaten Modus oder erlaube Speicher für diese Seite, dann lade die App neu.</p>
+    </div>
+  `;
+  throw new Error('localStorage unavailable');
+}
+
+/* ---------- Helpers ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function uid() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+function num(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
+  return isFinite(n) ? n : 0;
+}
+
+const fmtEUR = (n) => new Intl.NumberFormat('de-DE', {
+  style: 'currency', currency: 'EUR',
+  maximumFractionDigits: 0, minimumFractionDigits: 0
+}).format(n || 0);
+
+const fmtEUR2 = (n) => new Intl.NumberFormat('de-DE', {
+  style: 'currency', currency: 'EUR',
+  maximumFractionDigits: 2, minimumFractionDigits: 0
+}).format(n || 0);
+
+const fmtSigned = (n) => (n >= 0 ? '+' : '') + fmtEUR(n);
+
+const fmtPct = (n) => (n >= 0 ? '+' : '') + (n).toFixed(1) + '%';
+
+function fmtDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtDateLong(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function todayISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+/* ---------- Calculations ---------- */
+function computeMyPortfolio(total, profit) {
+  const cost = total - profit;
+  if (cost <= 0) return 0;
+  let share = MY_INVEST / cost;
+  if (share > 1) share = 1;
+  if (share < 0) share = 0;
+  return share * total;
+}
+
+function computeBreakdown(data) {
+  const myPortfolio = computeMyPortfolio(num(data.portfolio.total), num(data.portfolio.profit));
+  const liquid = num(data.liquid.account) + num(data.liquid.cash) + num(data.liquid.paypal);
+  const other = (data.other || []).reduce((s, x) => s + num(x.value), 0);
+  return {
+    myPortfolio,
+    liquid,
+    other,
+    total: myPortfolio + liquid + other
+  };
+}
+
+/* ---------- Storage ---------- */
+function loadAll() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_PREFIX)) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const obj = JSON.parse(raw);
+        if (obj && obj.id && obj.date) out.push(obj);
+      } catch (e) { /* skip */ }
+    }
+  }
+  out.sort((a, b) => {
+    if (a.date < b.date) return -1;
+    if (a.date > b.date) return 1;
+    return (a.createdAt || '').localeCompare(b.createdAt || '');
+  });
+  return out.map(e => ({ ...e, computed: computeBreakdown(e) }));
+}
+
+function saveEntry(entry) {
+  localStorage.setItem(STORAGE_PREFIX + entry.id, JSON.stringify(entry));
+}
+
+function deleteEntryById(id) {
+  localStorage.removeItem(STORAGE_PREFIX + id);
+}
+
+/* ---------- App state ---------- */
+const state = {
+  entries: [],
+  view: 'home',
+  draft: null,
+  editingId: null
+};
+
+function refresh() {
+  state.entries = loadAll();
+  render();
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---------- Modal ---------- */
+function confirmModal({ title, text, confirmLabel = 'Löschen', danger = true }) {
+  return new Promise((resolve) => {
+    const m = $('#modal');
+    $('#modalTitle').textContent = title;
+    $('#modalText').textContent = text;
+    const btn = $('#modalConfirm');
+    btn.textContent = confirmLabel;
+    btn.className = 'btn ' + (danger ? 'danger' : 'primary');
+    m.classList.add('active');
+    const cleanup = (val) => {
+      m.classList.remove('active');
+      btn.removeEventListener('click', onYes);
+      $('#modalCancel').removeEventListener('click', onNo);
+      m.removeEventListener('click', onBackdrop);
+      resolve(val);
+    };
+    const onYes = () => cleanup(true);
+    const onNo = () => cleanup(false);
+    const onBackdrop = (e) => { if (e.target === m) cleanup(false); };
+    btn.addEventListener('click', onYes);
+    $('#modalCancel').addEventListener('click', onNo);
+    m.addEventListener('click', onBackdrop);
+  });
+}
+
+/* ---------- Icons (inline SVG) ---------- */
+const icons = {
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+};
+
+/* ---------- Chart ---------- */
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+  return d;
+}
+
+function renderChart(container, entries) {
+  container.innerHTML = '';
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="chart-empty">Noch keine Einträge</div>';
+    return;
+  }
+  if (entries.length === 1) {
+    container.innerHTML = '<div class="chart-empty">Mindestens 2 Einträge für den Verlauf</div>';
+    return;
+  }
+
+  const W = container.clientWidth || 320;
+  const H = container.clientHeight || 180;
+  const pad = { top: 16, right: 10, bottom: 16, left: 10 };
+
+  const totals = entries.map(e => e.computed.total);
+  const dates = entries.map(e => new Date(e.date + 'T00:00:00').getTime());
+
+  const minV = Math.min(...totals);
+  const maxV = Math.max(...totals);
+  const minD = Math.min(...dates);
+  const maxD = Math.max(...dates);
+  const valRange = (maxV - minV) || 1;
+  const dateRange = (maxD - minD) || 1;
+
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+
+  const points = entries.map((e, i) => {
+    const x = pad.left + (entries.length === 1
+      ? innerW / 2
+      : ((dates[i] - minD) / dateRange) * innerW);
+    const y = maxV === minV
+      ? pad.top + innerH / 2
+      : pad.top + (1 - (totals[i] - minV) / valRange) * innerH;
+    return { x, y };
+  });
+
+  const linePath = smoothPath(points);
+  const last = points[points.length - 1];
+  const first = points[0];
+  const areaPath = linePath +
+    ` L ${last.x.toFixed(2)} ${(H - 2).toFixed(2)}` +
+    ` L ${first.x.toFixed(2)} ${(H - 2).toFixed(2)} Z`;
+
+  const lastIdx = points.length - 1;
+
+  const svg = `
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7FB069" stop-opacity="0.45"/>
+          <stop offset="60%" stop-color="#7FB069" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#7FB069" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="nwGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <path d="${areaPath}" fill="url(#nwGrad)"/>
+      <path d="${linePath}" fill="none" stroke="#7FB069" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${points[lastIdx].x.toFixed(2)}" cy="${points[lastIdx].y.toFixed(2)}"
+              r="4" fill="#7FB069" filter="url(#nwGlow)"/>
+      <circle cx="${points[lastIdx].x.toFixed(2)}" cy="${points[lastIdx].y.toFixed(2)}"
+              r="2" fill="#1a1a1a"/>
+    </svg>
+  `;
+  container.innerHTML = svg;
+}
+
+/* ---------- Render: Home ---------- */
+function renderHome() {
+  const entries = state.entries;
+  const reversed = [...entries].reverse(); // newest first
+  const last = entries[entries.length - 1];
+  const prev = entries[entries.length - 2];
+
+  let deltaHTML = '';
+  if (last && prev) {
+    const d = last.computed.total - prev.computed.total;
+    const pct = prev.computed.total !== 0 ? (d / prev.computed.total) * 100 : 0;
+    const cls = d > 0 ? 'delta-pos' : (d < 0 ? 'delta-neg' : 'delta-neutral');
+    const sign = d > 0 ? '▲' : (d < 0 ? '▼' : '·');
+    deltaHTML = `
+      <div class="hero-delta">
+        <span class="delta-pill ${cls}">${sign} ${fmtSigned(d)}</span>
+        <span class="hero-delta-meta">${fmtPct(pct)} seit ${fmtDate(prev.date)}</span>
+      </div>`;
+  } else if (last) {
+    deltaHTML = `<div class="hero-delta"><span class="hero-delta-meta">Erster Eintrag · ${fmtDate(last.date)}</span></div>`;
+  } else {
+    deltaHTML = `<div class="hero-delta"><span class="hero-delta-meta">Noch keine Einträge</span></div>`;
+  }
+
+  const breakdown = last ? last.computed : { myPortfolio: 0, liquid: 0, other: 0, total: 0 };
+
+  const entriesHTML = reversed.length === 0
+    ? `<div class="empty-state">Noch keine Einträge.<br>Tippe „+ Eintrag“ unten rechts.</div>`
+    : reversed.map((e, idx) => {
+        const previous = reversed[idx + 1];
+        let dHTML = '';
+        if (previous) {
+          const d = e.computed.total - previous.computed.total;
+          const cls = d > 0 ? 'delta-pos' : (d < 0 ? 'delta-neg' : 'delta-neutral');
+          dHTML = `<span class="entry-delta ${cls}">${fmtSigned(d)}</span>`;
+        } else {
+          dHTML = `<span class="entry-delta" style="color:var(--text-muted)">erster Eintrag</span>`;
+        }
+        return `
+          <div class="entry-item">
+            <div class="entry-info">
+              <div class="entry-date">${fmtDate(e.date)}</div>
+              <div class="entry-value">${fmtEUR(e.computed.total)}</div>
+              ${dHTML}
+            </div>
+            <div class="entry-actions">
+              <button class="icon-btn" data-edit="${e.id}" aria-label="Bearbeiten">${icons.edit}</button>
+              <button class="icon-btn danger" data-del="${e.id}" aria-label="Löschen">${icons.trash}</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+  return `
+    <div class="home">
+      <div class="app-header">
+        <p class="app-title"><span class="dot"></span>Networth</p>
+      </div>
+
+      <div class="hero">
+        <p class="hero-label">Aktueller Networth</p>
+        <h1 class="hero-value">${fmtEUR(breakdown.total)}</h1>
+        ${deltaHTML}
+      </div>
+
+      <div class="chart-wrap" id="chart"></div>
+
+      <div class="section">
+        <p class="section-title">Aufteilung</p>
+        <div class="card">
+          <div class="breakdown-row">
+            <span class="breakdown-label">Portfolio (mein Anteil)</span>
+            <span class="breakdown-value">${fmtEUR(breakdown.myPortfolio)}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="breakdown-label">Liquide</span>
+            <span class="breakdown-value">${fmtEUR(breakdown.liquid)}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="breakdown-label">Sonstiges</span>
+            <span class="breakdown-value">${fmtEUR(breakdown.other)}</span>
+          </div>
+          <div class="breakdown-row total">
+            <span class="breakdown-label">Gesamt</span>
+            <span class="breakdown-value">${fmtEUR(breakdown.total)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <p class="section-title">Einträge${entries.length ? ' · ' + entries.length : ''}</p>
+        <div class="entry-list">${entriesHTML}</div>
+      </div>
+
+      <div class="section">
+        <p class="section-title">Backup</p>
+        <div class="card">
+          <div class="backup-actions">
+            <button class="btn" id="btnExport">${icons.download}<span>Export</span></button>
+            <button class="btn" id="btnImport">${icons.upload}<span>Import</span></button>
+          </div>
+          <div class="hint">Export speichert eine JSON-Datei. Import fügt Einträge hinzu (Duplikate werden überschrieben, wenn die ID gleich ist).</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="fab" id="fab" aria-label="Neuer Eintrag">
+      <span class="plus">+</span><span>Eintrag</span>
+    </button>
+  `;
+}
+
+/* ---------- Render: Entry view ---------- */
+function freshDraft() {
+  return {
+    id: uid(),
+    date: todayISO(),
+    portfolio: { total: '', profit: '' },
+    liquid: { account: '', cash: '', paypal: '' },
+    other: [],
+    createdAt: new Date().toISOString()
+  };
+}
+
+function renderEntryView() {
+  const d = state.draft;
+  const isEdit = !!state.editingId;
+  return `
+    <div class="entry-view active" id="entryView">
+      <div class="entry-header" id="entryHeader">
+        <button class="back-btn" id="backBtn" aria-label="Zurück">${icons.back}</button>
+        <div class="entry-title">${isEdit ? 'Eintrag bearbeiten' : 'Neuer Eintrag'}</div>
+      </div>
+
+      <div class="entry-form" id="entryForm">
+        <div class="form-section">
+          <h3>Datum</h3>
+          <div class="field">
+            <input type="date" id="f_date" value="${d.date}">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Portfolio <span class="badge">geteilt</span></h3>
+          <div class="field">
+            <label>Gesamtwert (Broker)</label>
+            <input type="number" inputmode="decimal" step="0.01" id="f_p_total" value="${d.portfolio.total}" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Gewinn seit Anfang</label>
+            <input type="number" inputmode="decimal" step="0.01" id="f_p_profit" value="${d.portfolio.profit}" placeholder="0">
+            <div class="help">Mein Anteil = ${MY_INVEST.toLocaleString('de-DE')} € / Einstandswert · max. 100 %</div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Liquide</h3>
+          <div class="field">
+            <label>Konto</label>
+            <input type="number" inputmode="decimal" step="0.01" id="f_l_account" value="${d.liquid.account}" placeholder="0">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Cash (Sparschwein + Bargeld)</label>
+              <input type="number" inputmode="decimal" step="0.01" id="f_l_cash" value="${d.liquid.cash}" placeholder="0">
+            </div>
+            <div class="field">
+              <label>PayPal</label>
+              <input type="number" inputmode="decimal" step="0.01" id="f_l_paypal" value="${d.liquid.paypal}" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Sonstiges</h3>
+          <div id="otherList">${renderOtherItems(d.other)}</div>
+          <button class="add-row-btn" id="addOther">+ Position hinzufügen</button>
+        </div>
+
+        <div class="form-section preview" id="previewBox">
+          <h3>Live-Vorschau</h3>
+          <div id="previewContent"></div>
+        </div>
+      </div>
+
+      <div class="entry-actions-bar">
+        <button class="btn ghost" id="cancelBtn">Abbrechen</button>
+        <button class="btn primary" id="saveBtn">Speichern</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderOtherItems(items) {
+  if (!items.length) {
+    return `<div class="hint" style="margin:0 0 8px 4px">Noch keine Positionen. Tippe unten zum Hinzufügen.</div>`;
+  }
+  return items.map((it, i) => `
+    <div class="other-item" data-idx="${i}">
+      <input type="text" class="name" placeholder="Name" value="${escapeHtml(it.name || '')}">
+      <input type="number" inputmode="decimal" step="0.01" class="amount" placeholder="0" value="${it.value === '' || it.value === undefined ? '' : it.value}">
+      <button class="icon-btn danger" data-del-other="${i}" aria-label="Entfernen">${icons.close}</button>
+    </div>
+  `).join('');
+}
+
+function renderPreview() {
+  const b = computeBreakdown(state.draft);
+  const html = `
+    <div class="breakdown-row">
+      <span class="breakdown-label">Portfolio (mein Anteil)</span>
+      <span class="breakdown-value">${fmtEUR2(b.myPortfolio)}</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="breakdown-label">Liquide</span>
+      <span class="breakdown-value">${fmtEUR2(b.liquid)}</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="breakdown-label">Sonstiges</span>
+      <span class="breakdown-value">${fmtEUR2(b.other)}</span>
+    </div>
+    <div class="breakdown-row total">
+      <span class="breakdown-label">Gesamt</span>
+      <span class="breakdown-value">${fmtEUR2(b.total)}</span>
+    </div>
+  `;
+  const target = $('#previewContent');
+  if (target) target.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* ---------- Render dispatcher ---------- */
+function render() {
+  const app = $('#app');
+  if (state.view === 'entry') {
+    app.innerHTML = renderEntryView();
+    bindEntryEvents();
+    renderPreview();
+  } else {
+    app.innerHTML = renderHome();
+    bindHomeEvents();
+    requestAnimationFrame(() => renderChart($('#chart'), state.entries));
+  }
+}
+
+/* ---------- Events: Home ---------- */
+function bindHomeEvents() {
+  const fab = $('#fab');
+  fab && fab.addEventListener('click', () => openEntry(null));
+
+  $$('[data-edit]').forEach(b => b.addEventListener('click', (e) => {
+    const id = e.currentTarget.dataset.edit;
+    openEntry(id);
+  }));
+
+  $$('[data-del]').forEach(b => b.addEventListener('click', async (e) => {
+    const id = e.currentTarget.dataset.del;
+    const entry = state.entries.find(x => x.id === id);
+    if (!entry) return;
+    const ok = await confirmModal({
+      title: 'Eintrag löschen?',
+      text: `Eintrag vom ${fmtDate(entry.date)} (${fmtEUR(entry.computed.total)}) wird dauerhaft entfernt.`,
+      confirmLabel: 'Löschen'
+    });
+    if (ok) {
+      deleteEntryById(id);
+      toast('Eintrag gelöscht');
+      refresh();
+    }
+  }));
+
+  $('#btnExport') && $('#btnExport').addEventListener('click', exportJSON);
+  $('#btnImport') && $('#btnImport').addEventListener('click', () => $('#fileInput').click());
+}
+
+/* ---------- Events: Entry view ---------- */
+function bindEntryEvents() {
+  const view = $('#entryView');
+  const header = $('#entryHeader');
+  view.addEventListener('scroll', () => {
+    if (view.scrollTop > 4) header.classList.add('scrolled');
+    else header.classList.remove('scrolled');
+  });
+
+  $('#backBtn').addEventListener('click', closeEntry);
+  $('#cancelBtn').addEventListener('click', closeEntry);
+  $('#saveBtn').addEventListener('click', persistDraft);
+
+  // Date
+  $('#f_date').addEventListener('change', (e) => {
+    state.draft.date = e.target.value || todayISO();
+  });
+
+  // Portfolio + liquid
+  const wire = (sel, path) => {
+    $(sel).addEventListener('input', (e) => {
+      const parts = path.split('.');
+      let obj = state.draft;
+      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      obj[parts[parts.length - 1]] = e.target.value;
+      renderPreview();
+    });
+  };
+  wire('#f_p_total', 'portfolio.total');
+  wire('#f_p_profit', 'portfolio.profit');
+  wire('#f_l_account', 'liquid.account');
+  wire('#f_l_cash', 'liquid.cash');
+  wire('#f_l_paypal', 'liquid.paypal');
+
+  // Other items
+  $('#addOther').addEventListener('click', () => {
+    state.draft.other.push({ name: '', value: '' });
+    refreshOtherList();
+    renderPreview();
+    // focus the new name input
+    requestAnimationFrame(() => {
+      const list = $('#otherList');
+      const inputs = list.querySelectorAll('.other-item .name');
+      const last = inputs[inputs.length - 1];
+      last && last.focus();
+    });
+  });
+
+  bindOtherListEvents();
+}
+
+function refreshOtherList() {
+  const list = $('#otherList');
+  list.innerHTML = renderOtherItems(state.draft.other);
+  bindOtherListEvents();
+}
+
+function bindOtherListEvents() {
+  $$('#otherList .other-item').forEach(row => {
+    const idx = +row.dataset.idx;
+    const nameInput = row.querySelector('.name');
+    const amountInput = row.querySelector('.amount');
+    nameInput.addEventListener('input', (e) => {
+      state.draft.other[idx].name = e.target.value;
+    });
+    amountInput.addEventListener('input', (e) => {
+      state.draft.other[idx].value = e.target.value;
+      renderPreview();
+    });
+    row.querySelector('[data-del-other]').addEventListener('click', () => {
+      state.draft.other.splice(idx, 1);
+      refreshOtherList();
+      renderPreview();
+    });
+  });
+}
+
+/* ---------- Open / close entry ---------- */
+function openEntry(id) {
+  if (id) {
+    const e = state.entries.find(x => x.id === id);
+    if (!e) return;
+    state.editingId = id;
+    state.draft = JSON.parse(JSON.stringify({
+      id: e.id,
+      date: e.date,
+      portfolio: e.portfolio,
+      liquid: e.liquid,
+      other: e.other || [],
+      createdAt: e.createdAt || new Date().toISOString()
+    }));
+  } else {
+    state.editingId = null;
+    state.draft = freshDraft();
+  }
+  state.view = 'entry';
+  render();
+  // push history state for back gesture
+  try { history.pushState({ view: 'entry' }, '', '#entry'); } catch (e) {}
+}
+
+function closeEntry() {
+  state.view = 'home';
+  state.draft = null;
+  state.editingId = null;
+  render();
+  try { if (location.hash === '#entry') history.back(); } catch (e) {}
+}
+
+window.addEventListener('popstate', () => {
+  if (state.view === 'entry') {
+    state.view = 'home';
+    state.draft = null;
+    state.editingId = null;
+    render();
+  }
+});
+
+/* ---------- Save draft ---------- */
+function persistDraft() {
+  const d = state.draft;
+  if (!d.date) {
+    toast('Bitte ein Datum wählen');
+    return;
+  }
+  // Sanitize numbers
+  const clean = {
+    id: d.id,
+    date: d.date,
+    portfolio: {
+      total: num(d.portfolio.total),
+      profit: num(d.portfolio.profit)
+    },
+    liquid: {
+      account: num(d.liquid.account),
+      cash: num(d.liquid.cash),
+      paypal: num(d.liquid.paypal)
+    },
+    other: (d.other || [])
+      .filter(o => (o.name && o.name.trim()) || num(o.value) !== 0)
+      .map(o => ({ name: (o.name || '').trim(), value: num(o.value) })),
+    createdAt: d.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  saveEntry(clean);
+  toast(state.editingId ? 'Eintrag aktualisiert' : 'Eintrag gespeichert');
+  state.view = 'home';
+  state.draft = null;
+  state.editingId = null;
+  refresh();
+  try { if (location.hash === '#entry') history.back(); } catch (e) {}
+}
+
+/* ---------- Export / Import ---------- */
+function exportJSON() {
+  const all = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_PREFIX)) {
+      try { all.push(JSON.parse(localStorage.getItem(key))); } catch (e) {}
+    }
+  }
+  if (!all.length) {
+    toast('Nichts zu exportieren');
+    return;
+  }
+  const today = todayISO();
+  const payload = {
+    app: 'networth-tracker',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    entries: all
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `networth-backup-${today}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`${all.length} Einträge exportiert`);
+}
+
+$('#fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    let arr = Array.isArray(data) ? data : (Array.isArray(data.entries) ? data.entries : null);
+    if (!arr) throw new Error('Ungültiges Format');
+    let added = 0, updated = 0, skipped = 0;
+    arr.forEach(item => {
+      if (!item || !item.date) { skipped++; return; }
+      if (!item.id) item.id = uid();
+      // Normalize
+      const normalized = {
+        id: item.id,
+        date: item.date,
+        portfolio: {
+          total: num(item.portfolio && item.portfolio.total),
+          profit: num(item.portfolio && item.portfolio.profit)
+        },
+        liquid: {
+          account: num(item.liquid && item.liquid.account),
+          cash: num(item.liquid && item.liquid.cash),
+          paypal: num(item.liquid && item.liquid.paypal)
+        },
+        other: Array.isArray(item.other)
+          ? item.other.map(o => ({ name: String(o.name || ''), value: num(o.value) }))
+          : [],
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt
+      };
+      const existed = !!localStorage.getItem(STORAGE_PREFIX + normalized.id);
+      saveEntry(normalized);
+      if (existed) updated++; else added++;
+    });
+    refresh();
+    toast(`Import: ${added} neu, ${updated} aktualisiert${skipped ? ', ' + skipped + ' übersprungen' : ''}`);
+  } catch (err) {
+    console.error(err);
+    toast('Import fehlgeschlagen: ungültige Datei');
+  }
+});
+
+/* ---------- Resize handler for chart ---------- */
+let resizeTimer;
+window.addEventListener('resize', () => {
+  if (state.view !== 'home') return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const c = $('#chart');
+    if (c) renderChart(c, state.entries);
+  }, 120);
+});
+
+/* ---------- Boot ---------- */
+refresh();
+</script>
+</body>
+</html>
