@@ -25,9 +25,9 @@
   --surface: #262626;
   --surface-2: #303030;
   --surface-3: #3a3a3a;
-  --accent: #D97757;
-  --accent-dim: #B85A3E;
-  --accent-soft: rgba(217, 119, 87, 0.12);
+  --accent: #7FB069;
+  --accent-dim: #6A9A56;
+  --accent-soft: rgba(127, 176, 105, 0.12);
   --success: #7FB069;
   --success-soft: rgba(127, 176, 105, 0.15);
   --danger: #E07856;
@@ -202,6 +202,46 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 12px;
 }
 
+/* Chart category tabs */
+.chart-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+.chart-tab {
+  flex: 1;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.chart-tab.active {
+  background: var(--accent-soft);
+  border-color: rgba(127,176,105,0.3);
+  color: var(--accent);
+  font-weight: 600;
+}
+/* Breakdown delta */
+.breakdown-val-col {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.breakdown-delta {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.breakdown-delta.delta-pos { color: var(--success); background: none; }
+.breakdown-delta.delta-neg { color: var(--danger); background: none; }
+
 /* Sections */
 .section {
   padding: 0 16px;
@@ -287,6 +327,9 @@ input[type="number"] { -moz-appearance: textfield; }
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
+.entry-delta.delta-pos { color: var(--success); background: none; }
+.entry-delta.delta-neg { color: var(--danger); background: none; }
+.entry-delta.delta-neutral { color: var(--text-muted); background: none; }
 .entry-actions {
   display: flex;
   gap: 0;
@@ -338,7 +381,7 @@ button svg { width: 18px; height: 18px; flex-shrink: 0; display: block; }
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.45), 0 4px 10px rgba(217, 119, 87, 0.3);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.45), 0 4px 10px rgba(127, 176, 105, 0.3);
   z-index: 50;
   transition: transform .12s, background .15s;
   min-height: 44px;
@@ -518,12 +561,12 @@ button svg { width: 18px; height: 18px; flex-shrink: 0; display: block; }
 
 /* Live preview */
 .preview {
-  background: linear-gradient(135deg, rgba(217,119,87,0.08), rgba(217,119,87,0.02));
-  border: 1px solid rgba(217,119,87,0.25);
+  background: linear-gradient(135deg, rgba(127,176,105,0.08), rgba(127,176,105,0.02));
+  border: 1px solid rgba(127,176,105,0.25);
 }
 .preview h3 { color: var(--accent); }
 .preview .breakdown-row + .breakdown-row {
-  border-top: 1px solid rgba(217,119,87,0.15);
+  border-top: 1px solid rgba(127,176,105,0.15);
 }
 
 .entry-actions-bar {
@@ -676,8 +719,25 @@ button svg { width: 18px; height: 18px; flex-shrink: 0; display: block; }
    NETWORTH TRACKER — single-file PWA
    ============================================================ */
 
-const MY_INVEST = 7000;
+let MY_INVEST = 7000;
 const STORAGE_PREFIX = 'nw:';
+const SETTINGS_KEY = 'nw:settings';
+
+/* ---------- Settings ---------- */
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (typeof s.myInvest === 'number' && s.myInvest >= 0) return s;
+    }
+  } catch (e) {}
+  return { myInvest: 7000 };
+}
+
+function saveSettings(s) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
 
 /* ---------- Storage health check ---------- */
 function storageAvailable() {
@@ -740,6 +800,23 @@ function fmtDateLong(iso) {
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function fmtDateLabel(iso) {
+  const today = todayISO();
+  if (iso === today) return 'Heute';
+  const d = new Date();
+  const yISO = new Date(d.getTime() - d.getTimezoneOffset() * 60000 - 86400000).toISOString().slice(0, 10);
+  if (iso === yISO) return 'Gestern';
+  return fmtDate(iso);
+}
+
+function bdDelta(curr, prevVal) {
+  if (prevVal === null || prevVal === undefined) return '';
+  const d = curr - prevVal;
+  if (d === 0) return '';
+  const cls = d > 0 ? 'delta-pos' : 'delta-neg';
+  return `<span class="breakdown-delta ${cls}">${fmtSigned(d)}</span>`;
 }
 
 function todayISO() {
@@ -805,7 +882,9 @@ const state = {
   entries: [],
   view: 'home',
   draft: null,
-  editingId: null
+  editingId: null,
+  settingsDraft: null,
+  chartMode: 'total'
 };
 
 function refresh() {
@@ -856,28 +935,17 @@ const icons = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
-  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
 };
 
 /* ---------- Chart ---------- */
-function smoothPath(pts) {
+function linePath(pts) {
   if (pts.length < 2) return '';
-  let d = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
-  }
-  return d;
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
 }
 
-function renderChart(container, entries) {
+function renderChart(container, entries, mode = 'total') {
   container.innerHTML = '';
   if (entries.length === 0) {
     container.innerHTML = '<div class="chart-empty">Noch keine Einträge</div>';
@@ -892,7 +960,14 @@ function renderChart(container, entries) {
   const H = container.clientHeight || 180;
   const pad = { top: 16, right: 10, bottom: 16, left: 10 };
 
-  const totals = entries.map(e => e.computed.total);
+  const modeMap = {
+    total:     { fn: e => e.computed.total,        color: '#7FB069' },
+    portfolio: { fn: e => e.computed.myPortfolio,  color: '#7FB069' },
+    liquid:    { fn: e => e.computed.liquid,        color: '#7FB069' }
+  };
+  const { fn: valFn, color: sc } = modeMap[mode] || modeMap.total;
+
+  const totals = entries.map(valFn);
   const dates = entries.map(e => new Date(e.date + 'T00:00:00').getTime());
 
   const minV = Math.min(...totals);
@@ -915,10 +990,10 @@ function renderChart(container, entries) {
     return { x, y };
   });
 
-  const linePath = smoothPath(points);
+  const chartPath = linePath(points);
   const last = points[points.length - 1];
   const first = points[0];
-  const areaPath = linePath +
+  const areaPath = chartPath +
     ` L ${last.x.toFixed(2)} ${(H - 2).toFixed(2)}` +
     ` L ${first.x.toFixed(2)} ${(H - 2).toFixed(2)} Z`;
 
@@ -928,9 +1003,9 @@ function renderChart(container, entries) {
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#7FB069" stop-opacity="0.45"/>
-          <stop offset="60%" stop-color="#7FB069" stop-opacity="0.12"/>
-          <stop offset="100%" stop-color="#7FB069" stop-opacity="0"/>
+          <stop offset="0%" stop-color="${sc}" stop-opacity="0.45"/>
+          <stop offset="60%" stop-color="${sc}" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="${sc}" stop-opacity="0"/>
         </linearGradient>
         <filter id="nwGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="2" result="b"/>
@@ -938,10 +1013,10 @@ function renderChart(container, entries) {
         </filter>
       </defs>
       <path d="${areaPath}" fill="url(#nwGrad)"/>
-      <path d="${linePath}" fill="none" stroke="#7FB069" stroke-width="2.5"
+      <path d="${chartPath}" fill="none" stroke="${sc}" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${points[lastIdx].x.toFixed(2)}" cy="${points[lastIdx].y.toFixed(2)}"
-              r="4" fill="#7FB069" filter="url(#nwGlow)"/>
+              r="4" fill="${sc}" filter="url(#nwGlow)"/>
       <circle cx="${points[lastIdx].x.toFixed(2)}" cy="${points[lastIdx].y.toFixed(2)}"
               r="2" fill="#1a1a1a"/>
     </svg>
@@ -974,6 +1049,7 @@ function renderHome() {
   }
 
   const breakdown = last ? last.computed : { myPortfolio: 0, liquid: 0, other: 0, total: 0 };
+  const prevBreakdown = prev ? prev.computed : null;
 
   const entriesHTML = reversed.length === 0
     ? `<div class="empty-state">Noch keine Einträge.<br>Tippe „+ Eintrag“ unten rechts.</div>`
@@ -990,7 +1066,7 @@ function renderHome() {
         return `
           <div class="entry-item">
             <div class="entry-info">
-              <div class="entry-date">${fmtDate(e.date)}</div>
+              <div class="entry-date">${fmtDateLabel(e.date)}</div>
               <div class="entry-value">${fmtEUR(e.computed.total)}</div>
               ${dHTML}
             </div>
@@ -1006,34 +1082,51 @@ function renderHome() {
     <div class="home">
       <div class="app-header">
         <p class="app-title"><span class="dot"></span>Networth</p>
+        <button class="icon-btn" id="btnSettings" aria-label="Einstellungen">${icons.settings}</button>
       </div>
 
       <div class="hero">
-        <p class="hero-label">Aktueller Networth</p>
-        <h1 class="hero-value">${fmtEUR(breakdown.total)}</h1>
+<h1 class="hero-value">${fmtEUR(breakdown.total)}</h1>
         ${deltaHTML}
       </div>
 
       <div class="chart-wrap" id="chart"></div>
+      <div class="chart-tabs">
+        <button class="chart-tab${state.chartMode==='total'?' active':''}" data-mode="total">Gesamt</button>
+        <button class="chart-tab${state.chartMode==='portfolio'?' active':''}" data-mode="portfolio">Portfolio</button>
+        <button class="chart-tab${state.chartMode==='liquid'?' active':''}" data-mode="liquid">Liquide</button>
+      </div>
 
       <div class="section">
         <p class="section-title">Aufteilung</p>
         <div class="card">
           <div class="breakdown-row">
             <span class="breakdown-label">Portfolio (mein Anteil)</span>
-            <span class="breakdown-value">${fmtEUR(breakdown.myPortfolio)}</span>
+            <div class="breakdown-val-col">
+              <span class="breakdown-value">${fmtEUR(breakdown.myPortfolio)}</span>
+              ${bdDelta(breakdown.myPortfolio, prevBreakdown && prevBreakdown.myPortfolio)}
+            </div>
           </div>
           <div class="breakdown-row">
             <span class="breakdown-label">Liquide</span>
-            <span class="breakdown-value">${fmtEUR(breakdown.liquid)}</span>
+            <div class="breakdown-val-col">
+              <span class="breakdown-value">${fmtEUR(breakdown.liquid)}</span>
+              ${bdDelta(breakdown.liquid, prevBreakdown && prevBreakdown.liquid)}
+            </div>
           </div>
           <div class="breakdown-row">
             <span class="breakdown-label">Sonstiges</span>
-            <span class="breakdown-value">${fmtEUR(breakdown.other)}</span>
+            <div class="breakdown-val-col">
+              <span class="breakdown-value">${fmtEUR(breakdown.other)}</span>
+              ${bdDelta(breakdown.other, prevBreakdown && prevBreakdown.other)}
+            </div>
           </div>
           <div class="breakdown-row total">
             <span class="breakdown-label">Gesamt</span>
-            <span class="breakdown-value">${fmtEUR(breakdown.total)}</span>
+            <div class="breakdown-val-col">
+              <span class="breakdown-value">${fmtEUR(breakdown.total)}</span>
+              ${bdDelta(breakdown.total, prevBreakdown && prevBreakdown.total)}
+            </div>
           </div>
         </div>
       </div>
@@ -1100,7 +1193,7 @@ function renderEntryView() {
           <div class="field">
             <label>Gewinn seit Anfang</label>
             <input type="number" inputmode="decimal" step="0.01" id="f_p_profit" value="${d.portfolio.profit}" placeholder="0">
-            <div class="help">Mein Anteil = ${MY_INVEST.toLocaleString('de-DE')} € / Einstandswert · max. 100 %</div>
+            <div class="help">Mein Anteil = ${MY_INVEST.toLocaleString('de-DE')} € / Einstandswert · max. 100 % <span style="color:var(--accent);cursor:pointer" id="linkToSettings">(ändern)</span></div>
           </div>
         </div>
 
@@ -1140,6 +1233,75 @@ function renderEntryView() {
       </div>
     </div>
   `;
+}
+
+/* ---------- Render: Settings view ---------- */
+function renderSettingsView() {
+  const s = state.settingsDraft;
+  return `
+    <div class="entry-view active" id="settingsView">
+      <div class="entry-header" id="settingsHeader">
+        <button class="back-btn" id="settingsBackBtn" aria-label="Zurück">${icons.back}</button>
+        <div class="entry-title">Einstellungen</div>
+      </div>
+
+      <div class="entry-form">
+        <div class="form-section">
+          <h3>Portfolio</h3>
+          <div class="field">
+            <label>Mein Investment (€)</label>
+            <input type="number" inputmode="decimal" step="1" id="s_myInvest" value="${s.myInvest}" placeholder="7000">
+            <div class="help">Dein eigener eingezahlter Betrag im gemeinsamen Portfolio. Wird für die Anteilsberechnung genutzt.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="entry-actions-bar">
+        <button class="btn ghost" id="settingsCancelBtn">Abbrechen</button>
+        <button class="btn primary" id="settingsSaveBtn">Speichern</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindSettingsEvents() {
+  const header = $('#settingsHeader');
+  const view = $('#settingsView');
+  view.addEventListener('scroll', () => {
+    if (view.scrollTop > 4) header.classList.add('scrolled');
+    else header.classList.remove('scrolled');
+  });
+
+  $('#settingsBackBtn').addEventListener('click', closeSettings);
+  $('#settingsCancelBtn').addEventListener('click', closeSettings);
+  $('#settingsSaveBtn').addEventListener('click', persistSettings);
+
+  $('#s_myInvest').addEventListener('input', (e) => {
+    state.settingsDraft.myInvest = num(e.target.value);
+  });
+}
+
+function openSettings() {
+  state.settingsDraft = { myInvest: MY_INVEST };
+  state.view = 'settings';
+  render();
+  try { history.pushState({ view: 'settings' }, '', '#settings'); } catch (e) {}
+}
+
+function closeSettings() {
+  state.view = 'home';
+  state.settingsDraft = null;
+  render();
+  try { if (location.hash === '#settings') history.back(); } catch (e) {}
+}
+
+function persistSettings() {
+  const val = num($('#s_myInvest').value);
+  if (val < 0) { toast('Betrag muss positiv sein'); return; }
+  MY_INVEST = val;
+  saveSettings({ myInvest: val });
+  toast('Einstellungen gespeichert');
+  closeSettings();
 }
 
 function renderOtherItems(items) {
@@ -1192,10 +1354,13 @@ function render() {
     app.innerHTML = renderEntryView();
     bindEntryEvents();
     renderPreview();
+  } else if (state.view === 'settings') {
+    app.innerHTML = renderSettingsView();
+    bindSettingsEvents();
   } else {
     app.innerHTML = renderHome();
     bindHomeEvents();
-    requestAnimationFrame(() => renderChart($('#chart'), state.entries));
+    requestAnimationFrame(() => renderChart($('#chart'), state.entries, state.chartMode));
   }
 }
 
@@ -1203,6 +1368,8 @@ function render() {
 function bindHomeEvents() {
   const fab = $('#fab');
   fab && fab.addEventListener('click', () => openEntry(null));
+
+  $('#btnSettings') && $('#btnSettings').addEventListener('click', openSettings);
 
   $$('[data-edit]').forEach(b => b.addEventListener('click', (e) => {
     const id = e.currentTarget.dataset.edit;
@@ -1227,6 +1394,13 @@ function bindHomeEvents() {
 
   $('#btnExport') && $('#btnExport').addEventListener('click', exportJSON);
   $('#btnImport') && $('#btnImport').addEventListener('click', () => $('#fileInput').click());
+  $('#btnSettings') && $('#btnSettings').addEventListener('click', openSettings);
+  $$('[data-mode]').forEach(btn => btn.addEventListener('click', (e) => {
+    state.chartMode = e.currentTarget.dataset.mode;
+    $$('.chart-tab').forEach(t => t.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    renderChart($('#chart'), state.entries, state.chartMode);
+  }));
 }
 
 /* ---------- Events: Entry view ---------- */
@@ -1257,6 +1431,12 @@ function bindEntryEvents() {
       renderPreview();
     });
   };
+  const linkToSettings = $('#linkToSettings');
+  linkToSettings && linkToSettings.addEventListener('click', () => {
+    closeEntry();
+    openSettings();
+  });
+
   wire('#f_p_total', 'portfolio.total');
   wire('#f_p_profit', 'portfolio.profit');
   wire('#f_l_account', 'liquid.account');
@@ -1343,6 +1523,10 @@ window.addEventListener('popstate', () => {
     state.view = 'home';
     state.draft = null;
     state.editingId = null;
+    render();
+  } else if (state.view === 'settings') {
+    state.view = 'home';
+    state.settingsDraft = null;
     render();
   }
 });
@@ -1470,6 +1654,7 @@ window.addEventListener('resize', () => {
 });
 
 /* ---------- Boot ---------- */
+MY_INVEST = loadSettings().myInvest;
 refresh();
 </script>
 </body>

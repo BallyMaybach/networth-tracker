@@ -14,4 +14,4 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(fp).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(data);
   });
-}).listen(PORT, '127.0.0.1', () => console.log('listening on', PORT));
+}).listen(PORT, '0.0.0.0', () => console.log('listening on', PORT));
