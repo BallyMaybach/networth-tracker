@@ -31,6 +31,13 @@ networth-tracker/
 ## Wichtiges
 
 - **Alles inline in index.html** — kein separates style.css oder script.js
-- Daten: `localStorage` (kein Backend)
+- Daten: Supabase (nachhilfe-tracker, ID: yyxnhwkdwcgpqajeknfe, Tabellen: nw_entries + nw_profiles)
 - Icons neu generieren: `node gen-icons.js` (nur nötig wenn ICONios.png sich ändert)
 - Dev-Server: `node _serve.js` → http://localhost:3000
+
+## AIOS
+
+Ballys AI Operating System liegt unter:
+`C:\Users\Bally\OneDrive\Desktop\BUSINESS\Bally Ordner\AI-OS-Bally`
+
+Dort liegen Skills, Connections, Context und alle Automatisierungen.
