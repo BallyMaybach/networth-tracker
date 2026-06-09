@@ -713,7 +713,8 @@ button svg { width: 18px; height: 18px; flex-shrink: 0; display: block; }
 const { createClient } = supabase;
 const sb = createClient(
   'https://yyxnhwkdwcgpqajeknfe.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5eG5od2tkd2NncHFhamVrbmZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NTI1ODAsImV4cCI6MjA5NDUyODU4MH0.sazJ45wY6kBzv9tLATQX-xEZ7ldx6XMMNigDM9nrFFE'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5eG5od2tkd2NncHFhamVrbmZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NTI1ODAsImV4cCI6MjA5NDUyODU4MH0.sazJ45wY6kBzv9tLATQX-xEZ7ldx6XMMNigDM9nrFFE',
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }
 );
 
 let currentUser = null;
@@ -1544,14 +1545,12 @@ sb.auth.onAuthStateChange(async (event, session) => {
   if (currentUser) {
     showLoading();
     try {
-      await withTimeout(loadUserData(), 8000);
-      state.view = 'home';
-      render();
+      await withTimeout(loadUserData(), 10000);
     } catch (e) {
-      console.error('Auth load failed:', e);
-      state.view = 'auth';
-      render();
+      console.error('Data load failed:', e);
     }
+    state.view = 'home';
+    render();
   } else {
     state.view = 'auth';
     state.entries = [];
@@ -1562,19 +1561,17 @@ sb.auth.onAuthStateChange(async (event, session) => {
 /* ---------- Boot ---------- */
 (async () => {
   showLoading();
-  try {
-    const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000);
-    currentUser = session?.user ?? null;
-    if (currentUser) {
-      await withTimeout(loadUserData(), 8000);
-      state.view = 'home';
-      render();
-    } else {
-      state.view = 'auth';
-      render();
+  const { data: { session } } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
+  currentUser = session?.user ?? null;
+  if (currentUser) {
+    try {
+      await withTimeout(loadUserData(), 10000);
+    } catch (e) {
+      console.error('Data load failed:', e);
     }
-  } catch (e) {
-    console.error('Boot failed:', e);
+    state.view = 'home';
+    render();
+  } else {
     state.view = 'auth';
     render();
   }
