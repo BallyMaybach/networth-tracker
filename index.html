@@ -1165,6 +1165,23 @@ function freshDraft() {
   };
 }
 
+/* ---------- Draft-Persistenz (überlebt App-Schließen) ---------- */
+const DRAFT_KEY = 'nw_draft';
+function saveDraftLocal() {
+  // Nur neue Einträge zwischenspeichern, keine Bearbeitungen
+  if (!state.draft || state.editingId) return;
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state.draft)); } catch (e) {}
+}
+function clearDraftLocal() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+}
+function loadDraftLocal() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
 function renderOtherItems(items) {
   if (!items.length) return `<div class="hint" style="margin:0 0 8px 4px">Noch keine Positionen.</div>`;
   return items.map((it, i) => `
@@ -1176,6 +1193,7 @@ function renderOtherItems(items) {
 }
 
 function renderPreview() {
+  saveDraftLocal();
   const b = computeBreakdown(state.draft);
   const html = `
     <div class="breakdown-row"><span class="breakdown-label">Portfolio (mein Anteil)</span><span class="breakdown-value">${fmtEUR2(b.myPortfolio)}</span></div>
@@ -1371,7 +1389,7 @@ function bindEntryEvents() {
   $('#backBtn').addEventListener('click', closeEntry);
   $('#cancelBtn').addEventListener('click', closeEntry);
   $('#saveBtn').addEventListener('click', persistDraft);
-  $('#f_date').addEventListener('change', (e) => { state.draft.date = e.target.value || todayISO(); });
+  $('#f_date').addEventListener('change', (e) => { state.draft.date = e.target.value || todayISO(); saveDraftLocal(); });
   const wire = (sel, path) => {
     $(sel).addEventListener('input', (e) => {
       const parts = path.split('.');
@@ -1407,7 +1425,7 @@ function refreshOtherList() {
 function bindOtherListEvents() {
   $$('#otherList .other-item').forEach(row => {
     const idx = +row.dataset.idx;
-    row.querySelector('.name').addEventListener('input', (e) => { state.draft.other[idx].name = e.target.value; });
+    row.querySelector('.name').addEventListener('input', (e) => { state.draft.other[idx].name = e.target.value; saveDraftLocal(); });
     row.querySelector('.amount').addEventListener('input', (e) => { state.draft.other[idx].value = e.target.value; renderPreview(); });
     row.querySelector('[data-del-other]').addEventListener('click', () => { state.draft.other.splice(idx, 1); refreshOtherList(); renderPreview(); });
   });
@@ -1429,6 +1447,7 @@ function openEntry(id) {
 }
 
 function closeEntry() {
+  clearDraftLocal();
   state.view = 'home';
   state.draft = null;
   state.editingId = null;
@@ -1437,7 +1456,7 @@ function closeEntry() {
 }
 
 window.addEventListener('popstate', () => {
-  if (state.view === 'entry') { state.view = 'home'; state.draft = null; state.editingId = null; render(); }
+  if (state.view === 'entry') { clearDraftLocal(); state.view = 'home'; state.draft = null; state.editingId = null; render(); }
   else if (state.view === 'settings') { state.view = 'home'; state.settingsDraft = null; render(); }
 });
 
@@ -1457,6 +1476,7 @@ async function persistDraft() {
   btn.textContent = '…';
   try {
     await saveEntry(clean);
+    clearDraftLocal();
     toast(state.editingId ? 'Eintrag aktualisiert' : 'Eintrag gespeichert');
     state.view = 'home';
     state.draft = null;
@@ -1538,6 +1558,19 @@ async function loadUserData() {
   await Promise.all([loadSettingsFromDB(), refresh()]);
 }
 
+// Stellt nach dem Login den Screen ein: offener Entwurf > Home
+function applyStartView() {
+  const saved = loadDraftLocal();
+  if (saved) {
+    state.draft = saved;
+    state.editingId = null;
+    state.view = 'entry';
+    try { history.pushState({ view: 'entry' }, '', '#entry'); } catch (e) {}
+  } else {
+    state.view = 'home';
+  }
+}
+
 /* ---------- Auth state listener ---------- */
 sb.auth.onAuthStateChange(async (event, session) => {
   if (event === 'INITIAL_SESSION') return; // boot handles initial session
@@ -1549,7 +1582,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     } catch (e) {
       console.error('Data load failed:', e);
     }
-    state.view = 'home';
+    applyStartView();
     render();
   } else {
     state.view = 'auth';
@@ -1569,7 +1602,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     } catch (e) {
       console.error('Data load failed:', e);
     }
-    state.view = 'home';
+    applyStartView();
     render();
   } else {
     state.view = 'auth';
